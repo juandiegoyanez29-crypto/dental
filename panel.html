@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DentalBot — Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f5f4f0;--surface:#fff;--surface2:#f0efe9;--border:#e2e0d8;--border2:#ccc9bd;
+  --text:#1a1917;--text2:#6b6860;--text3:#a09d95;
+  --teal:#2563EB;--teal-l:#eff6ff;--teal-d:#1d4ed8;
+  --red:#E24B4A;--red-l:#fff0f0;--blue:#378ADD;--blue-l:#e6f1fb;
+  --amber:#BA7517;--amber-l:#faeeda;
+  --radius:10px;--rsm:6px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;}
+.login-screen{display:none;position:fixed;inset:0;background:var(--teal);z-index:999;align-items:center;justify-content:center;}
+.login-screen.show{display:flex;}
+.login-box{background:white;border-radius:16px;padding:36px;width:360px;max-width:90vw;text-align:center;}
+.login-logo{font-size:40px;margin-bottom:10px;}
+.login-title{font-size:20px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.login-sub{font-size:13px;color:var(--text3);margin-bottom:24px;}
+.login-fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;text-align:left;}
+.login-fg label{font-size:12px;font-weight:500;color:var(--text2);}
+.login-fg input{font-family:'DM Sans',sans-serif;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--rsm);font-size:14px;color:var(--text);outline:none;transition:border-color .2s;width:100%;}
+.login-fg input:focus{border-color:var(--teal);}
+.login-btn{width:100%;padding:13px;background:var(--teal);color:white;border:none;border-radius:var(--rsm);font-size:15px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .15s;}
+.login-btn:hover{background:var(--teal-d);}
+.login-error{font-size:12px;color:var(--red);margin-top:10px;display:none;}
+.app-wrap{display:none;width:100%;min-height:100vh;}
+.app-wrap.show{display:flex;}
+
+/* SIDEBAR */
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;bottom:0;left:0;z-index:10;}
+.logo-wrap{padding:18px 18px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.logo-icon{width:30px;height:30px;background:var(--teal);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.logo-name{font-size:14px;font-weight:600;}
+.logo-sub{font-size:11px;color:var(--text3);}
+.nav{padding:10px 8px;flex:1;}
+.nav-sec{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;padding:8px 8px 4px;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--rsm);font-size:13px;color:var(--text2);cursor:pointer;margin-bottom:2px;transition:all .15s;}
+.nav-item:hover{background:var(--surface2);color:var(--text);}
+.nav-item.active{background:var(--teal-l);color:var(--teal-d);font-weight:500;}
+.nav-ico{font-size:14px;width:16px;text-align:center;}
+.sidebar-foot{padding:12px 18px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);}
+.dot-live{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--teal);margin-right:5px;}
+
+/* MAIN */
+.main{margin-left:220px;flex:1;padding:24px;min-height:100vh;}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;}
+.page-title{font-size:19px;font-weight:600;letter-spacing:-0.3px;}
+.page-sub{font-size:12px;color:var(--text3);margin-top:2px;}
+.btn{font-family:'DM Sans',sans-serif;border-radius:var(--rsm);padding:8px 15px;font-size:13px;cursor:pointer;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-weight:500;transition:all .15s;}
+.btn:hover{background:var(--surface2);}
+.btn-p{background:var(--teal);border-color:var(--teal);color:white;}
+.btn-p:hover{background:var(--teal-d);}
+
+/* PANELS */
+.panel{display:none;}.panel.active{display:block;}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:20px;}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;}
+.m-lbl{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px;}
+.m-val{font-size:26px;font-weight:600;letter-spacing:-1px;line-height:1;}
+.m-sub{font-size:11px;color:var(--text3);margin-top:5px;}
+.mv-r{color:var(--red);}.mv-t{color:var(--teal);}
+
+/* GRID */
+.two-col{display:grid;grid-template-columns:1fr 1.5fr;gap:16px;}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;}
+.card-title{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+
+/* BADGES */
+.badge{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;display:inline-block;}
+.bc{background:var(--teal-l);color:var(--teal-d);}
+.br{background:var(--blue-l);color:#185FA5;}
+.be{background:var(--red-l);color:#A32D2D;}
+
+/* APPOINTMENTS */
+.appt-list{display:flex;flex-direction:column;gap:7px;}
+.appt{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:var(--rsm);cursor:pointer;transition:background .15s;}
+.appt:hover{background:var(--surface2);}
+.adot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.dc{background:var(--teal);}.dr{background:var(--blue);}.de{background:var(--red);}
+.a-info{flex:1;min-width:0;}
+.a-name{font-size:13px;font-weight:500;}
+.a-det{font-size:11px;color:var(--text2);margin-top:2px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.a-time{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;flex-shrink:0;text-align:right;line-height:1.4;}
+
+/* PATIENTS */
+.patient-list{display:flex;flex-direction:column;gap:5px;}
+.p-row{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--border);border-radius:var(--rsm);cursor:pointer;transition:all .15s;}
+.p-row:hover{background:var(--surface2);}
+.avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;}
+.at{background:var(--teal-l);color:var(--teal-d);}
+.ab{background:var(--blue-l);color:#185FA5;}
+.aa{background:var(--amber-l);color:var(--amber);}
+.ar{background:var(--red-l);color:#A32D2D;}
+.pn{font-size:13px;font-weight:500;}
+.ps{font-size:11px;color:var(--text2);margin-top:1px;}
+
+/* CALENDAR */
+.cal-nav{display:flex;gap:5px;margin-bottom:10px;align-items:center;}
+.cal-nav-btn{background:none;border:1px solid var(--border2);border-radius:var(--rsm);padding:3px 9px;cursor:pointer;font-size:12px;color:var(--text2);font-family:'DM Sans',sans-serif;}
+.cal-nav-btn:hover{background:var(--surface2);}
+.cal-mes-label{font-size:12px;font-weight:600;color:var(--text);flex:1;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+.cal-h{font-size:9px;font-weight:600;color:var(--text3);text-align:center;padding:3px 0;text-transform:uppercase;}
+.cal-d{height:30px;border-radius:var(--rsm);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text2);cursor:pointer;transition:background .15s;position:relative;user-select:none;}
+.cal-d:hover{background:var(--surface2);}
+.cal-d.today{background:var(--teal);color:white;font-weight:600;}
+.cal-d.hd::after{content:'';width:4px;height:4px;border-radius:50%;background:var(--teal);position:absolute;bottom:2px;}
+.cal-d.today.hd::after{background:white;}
+.cal-d.ed::after{background:var(--red);}
+.cal-d.empty{color:var(--text3);opacity:.3;cursor:default;pointer-events:none;}
+.cal-d.sel{outline:2px solid var(--teal);outline-offset:1px;}
+.cal-legend{display:flex;gap:12px;margin-top:10px;font-size:10px;color:var(--text2);}
+.cal-legend span{display:flex;align-items:center;gap:4px;}
+.cal-legend i{width:6px;height:6px;border-radius:50%;display:inline-block;}
+
+/* FORMS */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.fg{display:flex;flex-direction:column;gap:4px;}.fg.full{grid-column:1/-1;}
+.fg label{font-size:11px;font-weight:500;color:var(--text2);}
+.fg input,.fg select,.fg textarea{font-family:'DM Sans',sans-serif;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--rsm);font-size:13px;color:var(--text);background:var(--surface);outline:none;transition:border-color .15s;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--teal);}
+.fg textarea{resize:vertical;min-height:70px;line-height:1.5;}
+
+/* HISTORY */
+.h-list{display:flex;flex-direction:column;gap:8px;}
+.h-item{padding:12px;border:1px solid var(--border);border-radius:var(--rsm);border-left:3px solid var(--teal);}
+.h-item.em{border-left-color:var(--red);}
+.h-meta{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:3px;}
+.h-tit{font-size:13px;font-weight:500;margin-bottom:4px;}
+.h-note{font-size:12px;color:var(--text2);line-height:1.5;}
+
+/* PROFILE */
+.profile-hdr{display:flex;align-items:center;gap:14px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+.info-tbl{width:100%;font-size:12px;border-collapse:collapse;}
+.info-tbl td{padding:6px 0;border-bottom:1px solid var(--border);}
+.info-tbl td:first-child{color:var(--text3);width:42%;}
+.info-tbl td:last-child{color:var(--text);font-weight:500;text-align:right;}
+.info-tbl tr:last-child td{border-bottom:none;}
+
+/* SEARCH */
+.sw{display:flex;gap:8px;margin-bottom:12px;}
+.sw input{flex:1;padding:9px 12px;border:1px solid var(--border2);border-radius:var(--rsm);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--surface);outline:none;}
+.sw input:focus{border-color:var(--teal);}
+.ftags{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+.ftag{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:500;border:1px solid var(--border2);cursor:pointer;background:var(--surface);color:var(--text2);transition:all .15s;}
+.ftag.active{background:var(--teal);border-color:var(--teal);color:white;}
+
+/* WHATSAPP */
+.wa-phone{background:#f0ebe1;border-radius:12px;overflow:hidden;border:1px solid var(--border);}
+.wa-hdr{background:#075e54;padding:10px 14px;display:flex;align-items:center;gap:10px;}
+.wa-av{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:white;flex-shrink:0;}
+.wa-nm{color:white;font-size:13px;font-weight:500;}
+.wa-st{color:rgba(255,255,255,.7);font-size:10px;}
+.wa-body{padding:12px;display:flex;flex-direction:column;gap:7px;min-height:240px;}
+.wm{max-width:85%;padding:8px 11px;border-radius:9px;font-size:12px;line-height:1.5;}
+.wm.bot{background:white;color:#333;align-self:flex-start;border-radius:0 9px 9px 9px;}
+.wm.usr{background:#dcf8c6;color:#333;align-self:flex-end;border-radius:9px 9px 0 9px;}
+.wt{font-size:9px;color:#999;margin-top:2px;text-align:right;}
+.wa-ir{padding:8px 12px;background:#f0ebe1;border-top:1px solid #d9d3c7;display:flex;gap:7px;}
+.wa-ir input{flex:1;border:none;background:white;border-radius:18px;padding:7px 12px;font-size:12px;outline:none;font-family:'DM Sans',sans-serif;}
+.wa-send{background:var(--teal);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;color:white;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;}
+.modal-bg.open{display:flex;}
+.modal{background:var(--surface);border-radius:var(--radius);padding:24px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:18px;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+
+/* MISC */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--text);color:white;padding:10px 18px;border-radius:var(--rsm);font-size:13px;font-weight:500;z-index:300;display:none;}
+.empty{text-align:center;padding:28px 16px;color:var(--text3);font-size:13px;}
+.loading{text-align:center;padding:18px;color:var(--text3);font-size:12px;}
+.cmd{padding:10px;border:1px solid var(--border);border-radius:var(--rsm);margin-bottom:7px;}
+.cmd-l{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;}
+.cmd-t{font-size:12px;color:var(--text2);}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen show" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">🦷</div>
+    <div class="login-title">DentalBot</div>
+    <div class="login-sub">Panel dental — acceso privado</div>
+    <div class="login-fg"><label>Correo electrónico</label><input type="email" id="login-email" placeholder="doctor@clinica.com"></div>
+    <div class="login-fg"><label>Contraseña</label><input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')loginDoctor()"></div>
+    <button class="login-btn" onclick="loginDoctor()">Ingresar al panel</button>
+    <div class="login-error" id="login-error">Email o contraseña incorrectos.</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app-wrap" id="app-wrap">
+<nav class="sidebar">
+  <div class="logo-wrap">
+    <div class="logo-icon">🦷</div>
+    <div><div class="logo-name">DentalBot</div><div class="logo-sub">Panel dental</div></div>
+  </div>
+  <div class="nav">
+    <div class="nav-sec">Principal</div>
+    <div class="nav-item active" onclick="goTo('dashboard')"><span class="nav-ico">⊞</span>Dashboard</div>
+    <div class="nav-item" onclick="goTo('agenda')"><span class="nav-ico">📅</span>Agenda</div>
+    <div class="nav-item" onclick="goTo('pacientes')"><span class="nav-ico">👤</span>Pacientes</div>
+    <div class="nav-item" onclick="goTo('historial')"><span class="nav-ico">📋</span>Historial</div>
+    <div class="nav-item" onclick="goTo('bot')"><span class="nav-ico">💬</span>Bot WhatsApp</div>
+  </div>
+  <div class="sidebar-foot">
+  <div style="font-size:11px;color:var(--text3);margin-bottom:6px;"><span class="dot-live"></span>Firebase conectado</div>
+  <div style="font-size:11px;color:var(--text3);margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="sidebar-user"></div>
+  <button onclick="cerrarSesion()" style="font-family:'DM Sans',sans-serif;width:100%;padding:6px;background:none;border:1px solid var(--border2);border-radius:var(--rsm);font-size:11px;color:var(--text2);cursor:pointer;">Cerrar sesión</button>
+</div>
+</nav>
+
+<div class="main">
+
+  <!-- DASHBOARD -->
+  <div id="panel-dashboard" class="panel active">
+    <div class="topbar">
+      <div><div class="page-title">Dashboard</div><div class="page-sub" id="fecha-hoy"></div></div>
+      <button class="btn btn-p" onclick="abrirModal('modal-cita')">+ Nueva cita</button>
+    </div>
+    <div class="metrics">
+      <div class="metric"><div class="m-lbl">Citas hoy</div><div class="m-val" id="m-hoy">–</div><div class="m-sub">agendadas</div></div>
+      <div class="metric"><div class="m-lbl">Emergencias</div><div class="m-val mv-r" id="m-emerg">–</div><div class="m-sub">alta prioridad</div></div>
+      <div class="metric"><div class="m-lbl">Pacientes</div><div class="m-val mv-t" id="m-pac">–</div><div class="m-sub">registrados</div></div>
+      <div class="metric"><div class="m-lbl">Total citas</div><div class="m-val" id="m-total">–</div><div class="m-sub">en sistema</div></div>
+    </div>
+    <div class="two-col">
+      <div class="card"><div class="card-title">Citas de hoy</div><div id="dash-citas" class="appt-list"><div class="loading">Cargando...</div></div></div>
+      <div class="card"><div class="card-title">Últimos pacientes</div><div id="dash-pacs" class="patient-list"><div class="loading">Cargando...</div></div></div>
+    </div>
+  </div>
+
+  <!-- AGENDA -->
+  <div id="panel-agenda" class="panel">
+    <div class="topbar">
+      <div><div class="page-title">Agenda</div><div class="page-sub">Citas y turnos</div></div>
+      <button class="btn btn-p" onclick="abrirModal('modal-cita')">+ Nueva cita</button>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="cal-nav">
+          <span class="cal-mes-label" id="cal-titulo">–</span>
+          <button class="cal-nav-btn" onclick="cambiarMes(-1)">‹</button>
+          <button class="cal-nav-btn" onclick="cambiarMes(1)">›</button>
+          <button class="cal-nav-btn" onclick="selDia(null)">Todas</button>
+        </div>
+        <div class="cal-grid" id="cal-grid">
+          <div class="cal-h">Lu</div><div class="cal-h">Ma</div><div class="cal-h">Mi</div>
+          <div class="cal-h">Ju</div><div class="cal-h">Vi</div><div class="cal-h">Sa</div><div class="cal-h">Do</div>
+        </div>
+        <div class="cal-legend">
+          <span><i style="background:var(--teal)"></i>Cita</span>
+          <span><i style="background:var(--red)"></i>Emergencia</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" id="agenda-titulo">Todas las citas</div>
+        <div id="agenda-lista" class="appt-list"><div class="loading">Cargando...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PACIENTES -->
+  <div id="panel-pacientes" class="panel">
+    <div class="topbar">
+      <div><div class="page-title">Pacientes</div><div class="page-sub">Base de datos</div></div>
+      <button class="btn btn-p" onclick="abrirModal('modal-paciente')">+ Nuevo paciente</button>
+    </div>
+    <div class="sw"><input type="text" id="search-input" placeholder="Buscar por nombre o responsable..." oninput="filtrarPacientes()"></div>
+    <div class="ftags">
+      <div class="ftag active" onclick="setFiltro('todos',this)">Todos</div>
+      <div class="ftag" onclick="setFiltro('Limpieza',this)">Limpieza</div>
+      <div class="ftag" onclick="setFiltro('Ortodoncia',this)">Ortodoncia</div>
+      <div class="ftag" onclick="setFiltro('Endodoncia',this)">Endodoncia</div>
+      <div class="ftag" onclick="setFiltro('General',this)">General</div>
+    </div>
+    <div class="card"><div id="pacientes-lista" class="patient-list"><div class="loading">Cargando...</div></div></div>
+  </div>
+
+  <!-- HISTORIAL -->
+  <div id="panel-historial" class="panel">
+    <div class="topbar">
+      <div><div class="page-title" id="hist-titulo">Historial</div><div class="page-sub" id="hist-sub">Seleccioná un paciente</div></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="goTo('pacientes')">← Pacientes</button>
+        <button class="btn btn-p" id="btn-nota" style="display:none;" onclick="abrirModal('modal-nota')">+ Agregar nota</button>
+      </div>
+    </div>
+    <div class="two-col" id="hist-content" style="display:none;">
+      <div class="card"><div class="card-title">Ficha del paciente</div><div id="hist-ficha"></div></div>
+      <div class="card"><div class="card-title">Historial de visitas <span id="hist-count" style="font-weight:400;color:var(--text3);"></span></div><div id="hist-visitas" class="h-list"></div></div>
+    </div>
+    <div id="hist-empty" class="card"><div class="empty">Seleccioná un paciente desde Pacientes para ver su historial.</div></div>
+  </div>
+
+  <!-- BOT -->
+  <div id="panel-bot" class="panel">
+    <div class="topbar">
+      <div><div class="page-title">Bot WhatsApp</div><div class="page-sub">Demo interactiva</div></div>
+      <span class="badge bc" style="font-size:11px;padding:5px 12px;">Simulación</span>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Así ve el cliente</div>
+        <div class="wa-phone">
+          <div class="wa-hdr"><div class="wa-av">CV</div><div><div class="wa-nm">Clínica Veterinaria</div><div class="wa-st">en línea</div></div></div>
+          <div class="wa-body" id="wa-msgs">
+            <div class="wm bot">¡Hola! Soy el asistente 🦷<br>¿En qué puedo ayudarte?<br><br>1️⃣ Agendar cita<br>2️⃣ Ver mis turnos<br>3️⃣ Historial de paciente<br>4️⃣ Emergencia<div class="wt">ahora</div></div>
+          </div>
+          <div class="wa-ir">
+            <input type="text" id="wa-input" placeholder="Escribí un mensaje..." onkeydown="if(event.key==='Enter')enviarWA()">
+            <button class="wa-send" onclick="enviarWA()">▶</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Comandos disponibles</div>
+        <div class="cmd"><div class="cmd-l">Historial</div><div class="cmd-t">"historial de juan" · "ficha de maria"</div></div>
+        <div class="cmd"><div class="cmd-l">Agendar</div><div class="cmd-t">"quiero turno" · "necesito consulta"</div></div>
+        <div class="cmd"><div class="cmd-l">Emergencia</div><div class="cmd-t">"emergencia" · "es urgente"</div></div>
+        <div class="cmd"><div class="cmd-l">Mis citas</div><div class="cmd-t">"mis turnos" · "tengo cita esta semana?"</div></div>
+        <div style="margin-top:12px;padding:12px;background:var(--teal-l);border-radius:var(--rsm);">
+          <div style="font-size:11px;font-weight:600;color:var(--teal-d);margin-bottom:3px;">💡 Probalo</div>
+          <div style="font-size:11px;color:var(--teal-d);">Escribí "historial del chancho" o "emergencia".</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CITA -->
+<div class="modal-bg" id="modal-cita">
+  <div class="modal">
+    <div class="modal-title">📅 Nueva cita</div>
+    <div class="form-grid">
+      <div class="fg"><label>Nombre del paciente</label><input type="text" id="c-nombre" placeholder="Ej: Firulais"></div>
+      <div class="fg"><label>Especie</label><select id="c-especie"><option>Perro</option><option>Gato</option><option>Exótico</option><option>Ave</option><option>Otro</option></select></div>
+      <div class="fg"><label>Nombre del responsable</label><input type="text" id="c-dueno" placeholder="Ej: María González"></div>
+      <div class="fg"><label>Teléfono</label><input type="text" id="c-tel" placeholder="+58 ..."></div>
+      <div class="fg"><label>Tipo de visita</label><select id="c-tipo"><option value="Consulta">Consulta</option><option value="Revisión">Revisión</option><option value="Emergencia">Emergencia</option></select></div>
+      <div class="fg"><label>Fecha y hora</label><input type="datetime-local" id="c-fecha"></div>
+      <div class="fg full"><label>Motivo</label><textarea id="c-motivo" placeholder="Describe el motivo..."></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="cerrarModal('modal-cita')">Cancelar</button>
+      <button class="btn btn-p" onclick="guardarCita()">Guardar cita</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PACIENTE -->
+<div class="modal-bg" id="modal-paciente">
+  <div class="modal">
+    <div class="modal-title">🦷 Nuevo paciente</div>
+    <div class="form-grid">
+      <div class="fg"><label>Nombre del paciente</label><input type="text" id="p-nombre" placeholder="Ej: Firulais"></div>
+      <div class="fg"><label>Especie</label><select id="p-especie"><option>Perro</option><option>Gato</option><option>Exótico</option><option>Ave</option><option>Otro</option></select></div>
+      <div class="fg"><label>Tratamiento actual</label><input type="text" id="p-raza" placeholder="Ej: Ortodoncia fase 2"></div>
+      <div class="fg"><label>Fecha de nacimiento</label><input type="text" id="p-edad" placeholder="Ej: 15/03/1990"></div>
+      <div class="fg"><label>Nombre del responsable</label><input type="text" id="p-dueno" placeholder="Nombre del responsable"></div>
+      <div class="fg"><label>Teléfono</label><input type="text" id="p-tel" placeholder="+58 ..."></div>
+      <div class="fg"><label>Seguro médico</label><input type="text" id="p-peso" placeholder="Ej: Seguros Caracas / Ninguno"></div>
+      <div class="fg"><label>Alergias</label><input type="text" id="p-alergias" placeholder="Ninguna / Penicilina..."></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="cerrarModal('modal-paciente')">Cancelar</button>
+      <button class="btn btn-p" onclick="guardarPaciente()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOTA -->
+<div class="modal-bg" id="modal-nota">
+  <div class="modal">
+    <div class="modal-title">🦷 Agregar nota de visita</div>
+    <div class="form-grid">
+      <div class="fg"><label>Tipo</label><select id="n-tipo"><option value="Consulta">Consulta</option><option value="Revisión">Revisión</option><option value="Emergencia">Emergencia</option></select></div>
+      <div class="fg"><label>Fecha</label><input type="date" id="n-fecha"></div>
+      <div class="fg full"><label>Título / diagnóstico</label><input type="text" id="n-titulo" placeholder="Ej: Control de rutina"></div>
+      <div class="fg full"><label>Notas clínicas</label><textarea id="n-nota" placeholder="Estado del paciente, tratamiento..."></textarea></div>
+      <div class="fg"><label>Seguro médico</label><input type="text" id="n-peso" placeholder="Opcional"></div>
+      <div class="fg"><label>Medicamento recetado</label><input type="text" id="n-prox" placeholder="Ej: Amoxicilina 500mg"></div>
+      <div class="fg"><label>Monto cobrado ($)</label><input type="text" id="n-monto" placeholder="Ej: 25"></div>
+      <div class="fg full"><label>Próxima cita recomendada</label><input type="text" id="n-proxcita" placeholder="Ej: En 3 semanas para control"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="cerrarModal('modal-nota')">Cancelar</button>
+      <button class="btn btn-p" onclick="guardarNota()">Guardar nota</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- end app-wrap -->
+<div class="toast" id="toast"></div>
+
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyBw5Fwu0sk0nEKAwu2WSe3GiFo_RuWmXSo",
+  authDomain: "dentalbot-cfb82.firebaseapp.com",
+  projectId: "dentalbot-cfb82",
+  storageBucket: "dentalbot-cfb82.firebasestorage.app",
+  messagingSenderId: "546069445313",
+  appId: "1:546069445313:web:0f814b5e0fd14a3c823240"
+});
+var db = firebase.firestore();
+var auth = firebase.auth();
+
+// AUTH STATE
+auth.onAuthStateChanged(function(user) {
+  if (user) {
+    document.getElementById('login-screen').classList.remove('show');
+    document.getElementById('app-wrap').classList.add('show');
+    document.getElementById('sidebar-user').textContent = user.email;
+  } else {
+    document.getElementById('login-screen').classList.add('show');
+    document.getElementById('app-wrap').classList.remove('show');
+  }
+});
+
+function loginDoctor() {
+  var email = document.getElementById('login-email').value.trim();
+  var pass = document.getElementById('login-pass').value;
+  var err = document.getElementById('login-error');
+  err.style.display = 'none';
+  if (!email || !pass) { err.textContent = 'Completá email y contraseña.'; err.style.display='block'; return; }
+  auth.signInWithEmailAndPassword(email, pass)
+    .then(function(){ err.style.display='none'; })
+    .catch(function(){ err.textContent = 'Email o contraseña incorrectos.'; err.style.display='block'; });
+}
+
+function cerrarSesion() {
+  auth.signOut();
+}
+
+var _citas = [], _pacs = [], _pacActivo = null, _filtro = 'todos', _diaSel = null;
+var _calMes = new Date().getMonth(), _calAnio = new Date().getFullYear();
+var MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+var MESES_C = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+// Fecha hoy
+document.getElementById('fecha-hoy').textContent = new Date().toLocaleDateString('es-VE',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+// NAV
+function goTo(id) {
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
+  document.getElementById('panel-'+id).classList.add('active');
+  var idx = {dashboard:0,agenda:1,pacientes:2,historial:3,bot:4};
+  document.querySelectorAll('.nav-item')[idx[id]].classList.add('active');
+}
+
+// MODALS
+function abrirModal(id) {
+  document.getElementById(id).classList.add('open');
+  if (id==='modal-cita') {
+    var now = new Date(); now.setMinutes(0,0,0);
+    document.getElementById('c-fecha').value = now.toISOString().slice(0,16);
+  }
+  if (id==='modal-nota') {
+    document.getElementById('n-fecha').value = new Date().toISOString().slice(0,10);
+  }
+}
+function cerrarModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(function(m){
+  m.addEventListener('click', function(e){ if(e.target===m) m.classList.remove('open'); });
+});
+
+// TOAST
+function toast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(function(){ t.style.display='none'; }, 2800);
+}
+
+// HELPERS
+function avCls(esp) {
+  if (!esp) return 'at';
+  var e = esp.toLowerCase();
+  if (e==='perro') return 'ab'; if (e==='gato') return 'aa'; if (e==='ave') return 'ar'; return 'at';
+}
+function ini(n) { if (!n) return '?'; return n.trim().split(' ').map(function(w){return w[0];}).join('').toUpperCase().slice(0,2); }
+function fmtH(ts) { if (!ts) return ''; var d=ts.toDate?ts.toDate():new Date(ts); return d.toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit'}); }
+function fmtF(ts) { if (!ts) return '–'; var d=ts.toDate?ts.toDate():new Date(ts); return d.getDate()+' '+MESES_C[d.getMonth()]; }
+function badge(t) { var m={Consulta:'bc',Revisión:'br',Emergencia:'be'}; return '<span class="badge '+(m[t]||'bc')+'">'+t+'</span>'; }
+
+// GUARDAR CITA
+function guardarCita() {
+  var nombre = document.getElementById('c-nombre').value.trim();
+  var dueno = document.getElementById('c-dueno').value.trim();
+  if (!nombre||!dueno) { toast('⚠️ Completá nombre y responsable'); return; }
+  db.collection('citas').add({
+    paciente: nombre, especie: document.getElementById('c-especie').value,
+    dueno: dueno, telefono: document.getElementById('c-tel').value,
+    tipo: document.getElementById('c-tipo').value,
+    fecha: new Date(document.getElementById('c-fecha').value||Date.now()),
+    motivo: document.getElementById('c-motivo').value,
+    creado: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){
+    cerrarModal('modal-cita'); toast('✅ Cita guardada');
+    ['c-nombre','c-dueno','c-tel','c-motivo'].forEach(function(id){ document.getElementById(id).value=''; });
+  }).catch(function(e){ toast('❌ '+e.message); });
+}
+
+// GUARDAR PACIENTE
+function guardarPaciente() {
+  var nombre = document.getElementById('p-nombre').value.trim();
+  var dueno = document.getElementById('p-dueno').value.trim();
+  if (!nombre||!dueno) { toast('⚠️ Completá nombre y responsable'); return; }
+  db.collection('pacientes').add({
+    nombre: nombre, dueno: dueno,
+    especie: document.getElementById('p-especie').value,
+    raza: document.getElementById('p-raza').value,
+    edad: document.getElementById('p-edad').value,
+    telefono: document.getElementById('p-tel').value,
+    peso: document.getElementById('p-peso').value,
+    alergias: document.getElementById('p-alergias').value,
+    visitas: [], creado: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){
+    cerrarModal('modal-paciente'); toast('✅ Paciente guardado');
+    ['p-nombre','p-raza','p-edad','p-dueno','p-tel','p-peso','p-alergias'].forEach(function(id){ document.getElementById(id).value=''; });
+  }).catch(function(e){ toast('❌ '+e.message); });
+}
+
+// GUARDAR NOTA
+function guardarNota() {
+  if (!_pacActivo) { toast('⚠️ No hay paciente seleccionado'); return; }
+  var titulo = document.getElementById('n-titulo').value.trim();
+  if (!titulo) { toast('⚠️ Agregá un título'); return; }
+  db.collection('pacientes').doc(_pacActivo.id).update({
+    visitas: firebase.firestore.FieldValue.arrayUnion({
+      tipo: document.getElementById('n-tipo').value,
+      fecha: document.getElementById('n-fecha').value,
+      titulo: titulo,
+      nota: document.getElementById('n-nota').value,
+      peso: document.getElementById('n-peso').value,
+      proximo: document.getElementById('n-prox').value
+    })
+  }).then(function(){
+    cerrarModal('modal-nota'); toast('✅ Nota guardada');
+    ['n-titulo','n-nota','n-peso','n-prox'].forEach(function(id){ document.getElementById(id).value=''; });
+  }).catch(function(e){ toast('❌ '+e.message); });
+}
+
+// RENDER CITAS
+function renderCitas(citas, elId) {
+  var el = document.getElementById(elId);
+  if (!citas.length) { el.innerHTML='<div class="empty">Sin citas para mostrar</div>'; return; }
+  el.innerHTML = citas.map(function(c){
+    var dot = c.tipo==='Emergencia'?'de':c.tipo==='Revisión'?'dr':'dc';
+    return '<div class="appt"><div class="adot '+dot+'"></div><div class="a-info"><div class="a-name">'+c.paciente+' — '+(c.especie||'')+'</div><div class="a-det">'+c.dueno+' &nbsp;'+badge(c.tipo)+(c.motivo?'&nbsp;<span style="color:var(--text3)">'+c.motivo+'</span>':'')+'</div></div><div class="a-time">'+fmtH(c.fecha)+'<br><span style="font-size:9px;">'+fmtF(c.fecha)+'</span></div></div>';
+  }).join('');
+}
+
+// RENDER PACIENTES
+function renderPacs(pacs) {
+  var el = document.getElementById('pacientes-lista');
+  if (!pacs.length) { el.innerHTML='<div class="empty">Sin pacientes. Agregá el primero ↑</div>'; return; }
+  el.innerHTML = pacs.map(function(p){
+    return '<div class="p-row" onclick="verHistorial(\''+p.id+'\')"><div class="avatar '+avCls(p.especie)+'">'+ini(p.nombre)+'</div><div style="flex:1;min-width:0;"><div class="pn">'+p.nombre+'</div><div class="ps">'+(p.especie||'')+(p.raza?' · '+p.raza:'')+' · '+p.dueno+'</div></div><div style="font-size:11px;color:var(--text3);">Ver →</div></div>';
+  }).join('');
+}
+
+// FILTROS
+function setFiltro(esp, el) {
+  document.querySelectorAll('.ftag').forEach(function(t){t.classList.remove('active');});
+  el.classList.add('active'); _filtro=esp; filtrarPacientes();
+}
+function filtrarPacientes() {
+  var q = document.getElementById('search-input').value.toLowerCase();
+  var f = _pacs;
+  if (_filtro!=='todos') f=f.filter(function(p){return p.especie===_filtro;});
+  if (q) f=f.filter(function(p){return p.nombre.toLowerCase().includes(q)||(p.dueno||'').toLowerCase().includes(q);});
+  renderPacs(f);
+}
+
+// HISTORIAL
+function verHistorial(id) {
+  var pac = _pacs.find(function(p){return p.id===id;});
+  if (!pac) return;
+  _pacActivo = pac; cargarHistorial(pac); goTo('historial');
+}
+function cargarHistorial(pac) {
+  document.getElementById('hist-titulo').textContent = 'Historial — '+pac.nombre;
+  document.getElementById('hist-sub').textContent = (pac.especie||'')+' · Responsable: '+pac.dueno;
+  document.getElementById('btn-nota').style.display = 'inline-flex';
+  document.getElementById('hist-content').style.display = 'grid';
+  document.getElementById('hist-empty').style.display = 'none';
+  var av = avCls(pac.especie);
+  document.getElementById('hist-ficha').innerHTML =
+    '<div class="profile-hdr"><div class="avatar '+av+'" style="width:48px;height:48px;font-size:17px;">'+ini(pac.nombre)+'</div><div><div style="font-size:16px;font-weight:600;">'+pac.nombre+'</div><div style="font-size:12px;color:var(--text2);margin-top:2px;">'+(pac.especie||'')+(pac.raza?' · '+pac.raza:'')+' · '+(pac.edad||'–')+'</div></div></div>'+
+    '<table class="info-tbl"><tr><td>Responsable</td><td>'+pac.dueno+'</td></tr><tr><td>Teléfono</td><td style="color:var(--blue);">'+(pac.telefono||'–')+'</td></tr><tr><td>Peso</td><td>'+(pac.peso?pac.peso+' kg':'–')+'</td></tr><tr><td>Alergias</td><td style="color:var(--red);">'+(pac.alergias||'Ninguna')+'</td></tr><tr><td>Visitas</td><td>'+(pac.visitas||[]).length+'</td></tr></table>';
+  var vis = (pac.visitas||[]).sort(function(a,b){return new Date(b.fecha)-new Date(a.fecha);});
+  document.getElementById('hist-count').textContent = '('+vis.length+')';
+  document.getElementById('hist-visitas').innerHTML = vis.length
+    ? vis.map(function(v){return '<div class="h-item '+(v.tipo==='Emergencia'?'em':'')+'"><div class="h-meta">'+(v.fecha||'–')+' · '+badge(v.tipo)+'</div><div class="h-tit">'+v.titulo+'</div><div class="h-note">'+(v.nota||'')+'</div>'+(v.peso?'<div style="font-size:10px;color:var(--text3);margin-top:4px;">Peso: '+v.peso+' kg'+(v.proximo?' · Próximo: '+v.proximo:'')+'</div>':'')+'</div>';}).join('')
+    : '<div class="empty">Sin visitas registradas aún.</div>';
+}
+
+// CALENDARIO
+function renderCalendario() {
+  document.getElementById('cal-titulo').textContent = MESES[_calMes]+' '+_calAnio;
+  var primerDia = new Date(_calAnio, _calMes, 1).getDay();
+  var diasMes = new Date(_calAnio, _calMes+1, 0).getDate();
+  var offset = primerDia===0 ? 6 : primerDia-1;
+  var hoyStr = new Date().toISOString().split('T')[0];
+
+  var diasConCita = {};
+  _citas.forEach(function(c){
+    if (!c.fecha) return;
+    var d = c.fecha.toDate ? c.fecha.toDate() : new Date(c.fecha);
+    if (d.getMonth()===_calMes && d.getFullYear()===_calAnio) {
+      var dia = d.getDate();
+      if (c.tipo==='Emergencia') diasConCita[dia]='e';
+      else if (!diasConCita[dia]) diasConCita[dia]='n';
+    }
+  });
+
+  var grid = document.getElementById('cal-grid');
+  var html = '<div class="cal-h">Lu</div><div class="cal-h">Ma</div><div class="cal-h">Mi</div><div class="cal-h">Ju</div><div class="cal-h">Vi</div><div class="cal-h">Sa</div><div class="cal-h">Do</div>';
+  for (var i=0;i<offset;i++) html+='<div class="cal-d empty"></div>';
+  for (var d=1;d<=diasMes;d++) {
+    var fs = _calAnio+'-'+String(_calMes+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    var isHoy = fs===hoyStr;
+    var isSel = _diaSel===fs;
+    var tipo = diasConCita[d];
+    var cls = 'cal-d';
+    if (tipo) cls += tipo==='e' ? ' ed hd' : ' hd';
+    if (isHoy) cls += ' today';
+    if (isSel) cls += ' sel';
+    html += '<div class="'+cls+'" onclick="selDia(\''+fs+'\')">'+d+'</div>';
+  }
+  grid.innerHTML = html;
+}
+
+function cambiarMes(dir) {
+  _calMes += dir;
+  if (_calMes>11){_calMes=0;_calAnio++;}
+  if (_calMes<0){_calMes=11;_calAnio--;}
+  _diaSel=null; renderCalendario(); renderAgenda();
+}
+
+function selDia(fs) {
+  _diaSel = fs; renderCalendario(); renderAgenda();
+}
+
+function renderAgenda() {
+  var tit = document.getElementById('agenda-titulo');
+  var citas = _citas;
+  if (_diaSel) {
+    citas = citas.filter(function(c){
+      if (!c.fecha) return false;
+      var d = c.fecha.toDate?c.fecha.toDate():new Date(c.fecha);
+      return d.toISOString().split('T')[0]===_diaSel;
+    });
+    var parts = _diaSel.split('-');
+    tit.textContent = 'Citas del '+parseInt(parts[2])+' de '+MESES_C[parseInt(parts[1])-1];
+  } else {
+    tit.textContent = 'Todas las citas';
+  }
+  renderCitas(citas, 'agenda-lista');
+}
+
+// BOT
+function enviarWA() {
+  var input = document.getElementById('wa-input');
+  var msg = input.value.trim(); if (!msg) return;
+  var cont = document.getElementById('wa-msgs');
+  input.value = '';
+  cont.innerHTML += '<div class="wm usr">'+msg+'<div class="wt">ahora</div></div>';
+  setTimeout(function(){
+    var resp='', m=msg.toLowerCase();
+    if (m.includes('historial')||m.includes('ficha')) {
+      var nombre = m.replace(/historial del?|historial|ficha de/g,'').trim();
+      var pac = _pacs.find(function(p){return p.nombre.toLowerCase().includes(nombre);});
+      if (pac) {
+        var ult=(pac.visitas||[]).sort(function(a,b){return new Date(b.fecha)-new Date(a.fecha);})[0];
+        resp='📋 <strong>'+pac.nombre+'</strong> ('+pac.especie+')<br>Responsable: '+pac.dueno+'<br>Peso: '+(pac.peso||'–')+' kg<br>Alergias: '+(pac.alergias||'Ninguna')+'<br><br>Última visita: '+(ult?ult.fecha+' — '+ult.titulo:'Sin visitas')+'<br>Visitas: '+(pac.visitas||[]).length;
+      } else resp='No encontré a "'+nombre+'" en el sistema.';
+    } else if (m.includes('emergencia')||m.includes('urgente')) {
+      resp='🚨 <strong>EMERGENCIA REGISTRADA</strong><br>Notificando al veterinario de turno ahora mismo.';
+    } else if (m.includes('turno')||m.includes('cita')||m==='1') {
+      resp='📅 Para agendar necesito:<br>1. Nombre de tu mascota<br>2. Tipo de visita<br>3. Tu nombre y teléfono';
+    } else if (m==='2'||m.includes('mis turno')) {
+      var rec=_citas.slice(0,3);
+      resp=rec.length?'Citas recientes:<br>'+rec.map(function(c){return '• '+c.paciente+' — '+c.tipo;}).join('<br>'):'No hay citas registradas.';
+    } else {
+      resp='No entendí 😅<br><br>1️⃣ Agendar cita<br>2️⃣ Mis turnos<br>3️⃣ Historial de paciente<br>4️⃣ Emergencia';
+    }
+    cont.innerHTML += '<div class="wm bot">'+resp+'<div class="wt">ahora</div></div>';
+    cont.scrollTop = cont.scrollHeight;
+  }, 700);
+  cont.scrollTop = cont.scrollHeight;
+}
+
+// FIREBASE LISTENERS
+db.collection('citas').orderBy('creado','desc').onSnapshot(function(snap){
+  _citas = snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+  var hoyStr = new Date().toDateString();
+  var hoy = _citas.filter(function(c){
+    if (!c.fecha) return false;
+    var d = c.fecha.toDate?c.fecha.toDate():new Date(c.fecha);
+    return d.toDateString()===hoyStr;
+  });
+  document.getElementById('m-hoy').textContent = hoy.length;
+  document.getElementById('m-emerg').textContent = _citas.filter(function(c){return c.tipo==='Emergencia';}).length;
+  document.getElementById('m-total').textContent = _citas.length;
+  renderCitas(hoy.length?hoy:_citas.slice(0,5), 'dash-citas');
+  renderCalendario();
+  renderAgenda();
+});
+
+db.collection('pacientes').orderBy('creado','desc').onSnapshot(function(snap){
+  _pacs = snap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+  document.getElementById('m-pac').textContent = _pacs.length;
+  var el = document.getElementById('dash-pacs');
+  el.innerHTML = _pacs.slice(0,4).map(function(p){
+    return '<div class="p-row" onclick="verHistorial(\''+p.id+'\')"><div class="avatar '+avCls(p.especie)+'">'+ini(p.nombre)+'</div><div style="flex:1;"><div class="pn">'+p.nombre+'</div><div class="ps">'+(p.especie||'')+' · '+p.dueno+'</div></div><div style="font-size:11px;color:var(--text3);">→</div></div>';
+  }).join('') || '<div class="empty">Sin pacientes aún</div>';
+  filtrarPacientes();
+  if (_pacActivo) {
+    var updated = _pacs.find(function(p){return p.id===_pacActivo.id;});
+    if (updated) { _pacActivo=updated; cargarHistorial(updated); }
+  }
+});
+</script>
+</body>
+</html>
